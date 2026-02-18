@@ -9,7 +9,7 @@ from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
 # ==========================================
-# 🔧 DEBUG LOGGING
+# 🔧 DEBUG LOGGING (បើកភ្នែកមើល Error)
 # ==========================================
 logging.basicConfig(format='[%(levelname) 5s/%(asctime)s] %(name)s: %(message)s',
                     level=logging.INFO)
@@ -24,9 +24,6 @@ SOURCE_CHAT_ID = int(os.environ.get("SOURCE_CHAT_ID"))
 WEB_URL = os.environ.get("WEB_URL")
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-# ✅ ID ឆានែលថ្មីសម្រាប់ទទួលលុយ (កន្លែងដែលត្រូវផ្ញើចូល)
-TARGET_CHANNEL_ID = -1003884565688
-
 app = Flask(__name__)
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
@@ -38,10 +35,6 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-# ==========================================
-# 📩 PAYMENT HANDLER
-# ==========================================
-# នៅស្តាប់តែ Source ដើមដដែល
 @client.on(events.NewMessage(chats=SOURCE_CHAT_ID))
 async def payment_handler(event):
     text = event.message.message
@@ -52,34 +45,13 @@ async def payment_handler(event):
         match = re.search(r"\$([\d.]+)", text)
         if match:
             amount = match.group(1)
-            print(f"💰 ចាប់បានលុយ៖ ${amount}")
-
-            # 1️⃣ ផ្នែកទី ១៖ ផ្ញើទៅ PythonAnywhere (មុខងារដើម)
+            print(f"💰 ចាប់បានលុយ៖ ${amount} -> កំពុងផ្ញើទៅ PythonAnywhere...")
             try:
-                print(" -> កំពុងផ្ញើទៅ PythonAnywhere...")
                 payload = {'amount': amount, 'secret': SECRET_KEY}
                 r = requests.post(WEB_URL, json=payload, timeout=10)
                 print(f"✅ Server ឆ្លើយតប៖ {r.status_code} - {r.text}")
             except Exception as e:
-                print(f"❌ Server បរាជ័យ៖ {e}")
-
-            # 2️⃣ ផ្នែកទី ២៖ ផ្ញើចូល Channel ថ្មីភ្លាមៗ (មុខងារបន្ថែមថ្មី)
-            try:
-                print(f" -> កំពុង Forward ទៅ Channel {TARGET_CHANNEL_ID}...")
-                
-                # បង្កើតសារជូនដំណឹង
-                alert_message = (
-                    f"🔔 **ចាប់បានការបាញ់លុយថ្មី!**\n"
-                    f"💰 ចំនួន: **${amount}**\n"
-                    f"➖➖➖➖➖➖➖\n"
-                    f"{text}"
-                )
-                
-                # ផ្ញើសារចូល Channel ថ្មី
-                await client.send_message(TARGET_CHANNEL_ID, alert_message)
-                print("✅ បានផ្ញើចូល Channel ថ្មីជោគជ័យ!")
-            except Exception as e:
-                print(f"❌ ផ្ញើចូល Channel ថ្មីបរាជ័យ៖ {e}")
+                print(f"❌ បរាជ័យ៖ {e}")
 
 async def start_telethon():
     print("🚀 កំពុងព្យាយាមភ្ជាប់ទៅ Telegram...")
@@ -90,6 +62,7 @@ async def start_telethon():
         me = await client.get_me()
         print(f"✅ ជោគជ័យ! បាន Login ក្នុងឈ្មោះ: {me.first_name}")
         await client.send_message('me', f"🤖 **Spy Bot ដំណើរការហើយនៅលើ Render!**\n📅 {os.environ.get('RENDER_INSTANCE_ID', 'Local')}")
+        print("📨 បានផ្ញើសារតេស្តទៅកាន់ 'Saved Messages' ហើយ!")
     except Exception as e:
         print(f"⚠️ មិនអាចផ្ញើសារតេស្តបាន៖ {e}")
 
@@ -102,6 +75,7 @@ def run_bot_loop():
     loop.run_until_complete(start_telethon())
 
 if __name__ == "__main__":
+    # បំបែក Thread ឱ្យ Flask និង Telethon ដើរទន្ទឹមគ្នា
     t = threading.Thread(target=run_bot_loop)
     t.start()
     run_flask()
